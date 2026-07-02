@@ -184,10 +184,11 @@ const state = { agg: {}, total: 0, idx: 0, displayCount: 0, rotateTimer: null };
 /* ════════════ DATA ════════════ */
 function blankAgg() {
   const a = {};
-  QUESTIONS.forEach(q => { a[q.id] = {}; q.options.forEach(o => a[q.id][o] = 0); });
+  QUESTIONS.forEach(q => { a[q.id] = {}; q.options.forEach(o => a[q.id][o] = 0); a[q.id]['Something else'] = 0; });
   return a;
 }
-function qSum(q) { return q.options.reduce((s, o) => s + (state.agg[q.id][o] || 0), 0); }
+function qOptions(q) { return q.options.concat('Something else'); }
+function qSum(q) { return qOptions(q).reduce((s, o) => s + (state.agg[q.id][o] || 0), 0); }
 
 function seedDemo() {
   state.agg = blankAgg();
@@ -234,7 +235,7 @@ function esc(s) { return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }
 function renderPanel() {
   const q = QUESTIONS[state.idx];
   const sum = qSum(q);
-  const ranked = [...q.options].sort((a, b) => (state.agg[q.id][b] || 0) - (state.agg[q.id][a] || 0)).slice(0, 5);
+  const ranked = [...qOptions(q)].sort((a, b) => (state.agg[q.id][b] || 0) - (state.agg[q.id][a] || 0)).slice(0, 5);
   stage.innerHTML =
     `<div class="panel">
        <div class="q-prompt">${q.prompt}</div>

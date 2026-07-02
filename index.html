@@ -869,7 +869,7 @@ async function liveRoomMap() {
   const m = {};
   QUESTIONS.forEach(q => {
     const opts = byQ[q.id];
-    if (!opts || !opts.length) { m[q.id] = { label: q.options[0], pct: 0 }; return; }
+    if (!opts || !opts.length) { m[q.id] = { label: 'Awaiting responses', pct: 0 }; return; }
     const total = opts.reduce((s, o) => s + o.votes, 0) || 1;
     const lead = opts.reduce((a, b) => b.votes > a.votes ? b : a);
     m[q.id] = { label: lead.option, pct: Math.round(lead.votes / total * 100) };
