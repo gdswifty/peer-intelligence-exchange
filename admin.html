@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peer Intelligence Exchange</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#7C03EC; --accent-deep:#5E02B3; --accent-wash:#F3EAFD;
+    --bg:#F2F2EB; --card:#FBFAF6; --elevated:#FFFFFF; --border:#DEDCD3; --border-strong:#C9C6BB;
+    --text:#1B1626; --dim:#5A5466; --soft:#C3A4E6;
+    --mono:'Share Tech Mono',monospace; --display:'Barlow Condensed',sans-serif; --body:'Barlow',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:var(--body);background:var(--bg);color:var(--text);padding:32px;line-height:1.5;}
+  .wrap{max-width:1180px;margin:0 auto;}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+  h1{font-family:var(--display);font-weight:700;font-size:34px;line-height:1;letter-spacing:-0.01em;margin-bottom:24px;}
+  h1 .tk{color:var(--accent);font-weight:700;} h1 .conn{color:var(--text);font-weight:400;}
+  h2{font-family:var(--display);font-weight:600;font-size:22px;margin:36px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+  .connect{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+  .connect .fld{display:flex;flex-direction:column;gap:6px;}
+  .connect label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);}
+  .connect input{font-family:var(--body);font-size:14px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:7px;background:var(--elevated);color:var(--text);}
+  #pw{width:260px;}
+  button{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.02em;padding:10px 20px;border:none;border-radius:7px;background:var(--accent);color:#fff;cursor:pointer;}
+  button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+  button:disabled{opacity:.5;cursor:default;}
+  .note{font-size:12.5px;color:var(--dim);margin-top:10px;line-height:1.5;}
+  .note b{color:var(--text);font-weight:500;}
+  .msg{font-family:var(--mono);font-size:12px;margin-top:12px;color:var(--dim);}
+  .msg.err{color:#b3261e;}
+
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px;}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;}
+  .stat .n{font-family:var(--mono);font-size:34px;line-height:1;color:var(--accent);}
+  .stat .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:8px;}
+
+  .qblock{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px 20px;margin-bottom:14px;}
+  .qtitle{font-family:var(--display);font-weight:600;font-size:17px;margin-bottom:12px;}
+  .orow{display:grid;grid-template-columns:1fr 3fr auto;gap:14px;align-items:center;padding:5px 0;}
+  .oname{font-size:13.5px;color:var(--dim);} .orow.top .oname{color:var(--text);font-weight:500;}
+  .otrack{height:12px;background:rgba(27,22,38,0.06);border-radius:99px;overflow:hidden;}
+  .ofill{height:100%;background:var(--soft);border-radius:99px;} .orow.top .ofill{background:linear-gradient(90deg,var(--accent-deep),var(--accent));}
+  .oval{font-family:var(--mono);font-size:12.5px;color:var(--dim);white-space:nowrap;}
+  .writein{font-size:12px;color:var(--dim);margin-top:8px;padding-top:8px;border-top:1px dashed var(--border);}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+  th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);background:var(--elevated);}
+  td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .pill{font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--border);color:var(--dim);}
+  .pill.complete{background:var(--accent-wash);color:var(--accent-deep);}
+  .pill.contact{background:#e6f0e6;color:#3a6a1a;}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin:36px 0 12px;}
+  .toolbar h2{margin:0;border:none;padding:0;}
+  .hide{display:none;}
+  .empty{color:var(--dim);font-size:13px;padding:14px 0;}
+  td.actions{text-align:right;white-space:nowrap;}
+  .mini{font-family:var(--body);font-weight:500;font-size:12px;padding:5px 11px;border:1px solid var(--border-strong);border-radius:6px;background:var(--elevated);color:var(--text);margin-left:6px;}
+  .mini.danger{color:#b3261e;border-color:#e3b4b0;}
+  tr.excluded td{opacity:.4;} tr.excluded td.actions{opacity:1;}
+  .modal{position:fixed;inset:0;background:rgba(27,22,38,0.5);display:none;align-items:flex-start;justify-content:center;padding:48px 20px;overflow:auto;z-index:50;}
+  .modal.show{display:flex;}
+  .modal-card{background:var(--elevated);border:1px solid var(--border);border-radius:14px;max-width:620px;width:100%;padding:28px 30px;position:relative;box-shadow:0 24px 60px rgba(27,22,38,0.25);}
+  .modal-x{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--dim);font-size:26px;line-height:1;padding:4px 8px;cursor:pointer;width:auto;}
+  .mhead{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:16px;}
+  .mname{font-family:var(--display);font-weight:600;font-size:22px;}
+  .mmeta{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:4px;letter-spacing:.02em;}
+  .mq{padding:12px 0;border-bottom:1px solid var(--border);}
+  .mqp{font-size:13px;color:var(--dim);margin-bottom:4px;}
+  .mqa{font-family:var(--display);font-weight:600;font-size:17px;}
+  .mline{font-size:13px;color:var(--text);margin-top:6px;}
+  .mlbl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin-right:8px;}
+  .mgift{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+  .tagx{font-family:var(--mono);font-size:10px;color:var(--accent);background:var(--accent-wash);padding:2px 6px;border-radius:99px;margin-left:6px;vertical-align:middle;}
+  .muted{color:var(--dim);font-weight:400;font-family:var(--body);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">WEKA · RAISE Paris 2026</div>
+  <h1><span class="conn">Peer</span> <span class="tk">Intelligence</span> <span class="conn">Exchange</span></h1>
+
+  <div class="connect" id="gate">
+    <div class="fld"><label>Password</label><input id="pw" type="password" placeholder="enter password" autocomplete="off" onkeydown="if(event.key==='Enter')load()"></div>
+    <button id="load" onclick="load()">Unlock</button>
+  </div>
+  <div class="msg" id="msg"></div>
+
+  <div id="report" class="hide">
+    <div class="toolbar" style="margin-top:24px"><h2>Overview</h2><button class="ghost" onclick="load()">Refresh</button></div>
+    <div class="cards" id="cards"></div>
+
+    <h2>Response funnel</h2>
+    <div class="qblock" id="funnel"></div>
+
+    <h2>What the room said</h2>
+    <div id="questions"></div>
+
+    <div class="toolbar"><h2>Entries</h2><button class="ghost" onclick="exportAll()">Download CSV</button></div>
+    <div id="leads"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-card">
+    <button class="modal-x" onclick="closeModal()" aria-label="Close">×</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// Questions (ids + labels mirror the kiosk)
+const QUESTIONS = [
+  { id:'bottleneck', prompt:'Where is the real constraint now?',
+    options:['Compute / GPU availability','Memory and data movement','Power and energy','Capital efficiency and cost','Model quality and capability','Talent and operational know-how','Unsupported AI use cases'] },
+  { id:'metric', prompt:'What decides competitive advantage in production AI?',
+    options:['Cost per token / per inference','GPU utilisation','Time to first token / latency','Tokens per watt','Throughput at scale','Model accuracy and quality'] },
+  { id:'dollar', prompt:'Where does the next investment go?',
+    options:['More GPUs / more compute','Efficiency from existing infrastructure','Model-side optimisation','Managed / cloud inference services','Memory and caching architecture'] },
+  { id:'sovereignty', prompt:'For European AI, sovereignty is a…',
+    options:['Competitive advantage','Constraint to design around','Compliance cost','Overstated — not a real factor'] }
+];
+
+// Public, safe to ship. The service key is never here. Read access is gated by
+// the password, which admin_dump() checks server-side in the database.
+const SUPABASE_URL  = 'https://olbswfxmskkcshcirnxu.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_4gC5Zv4znTXEYxFgmrcPnA_Ly_0pW58';
+
+let ROWS = [];
+let PW = '';   // held in memory only — never stored, never in the file
+const $ = id => document.getElementById(id);
+const msg = (t, err=false) => { const m = $('msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); };
+const esc = s => (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// All capture timestamps shown in Paris local time (booth is on-site at RAISE Paris).
+// created_at is stored UTC in Supabase; we render it in Europe/Paris everywhere.
+const fmtParis = iso => { if(!iso) return ''; try { return new Date(iso).toLocaleString('en-GB',{timeZone:'Europe/Paris',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:false}); } catch(e){ return iso; } };
+
+async function load() {
+  const pw = ($('pw') && $('pw').value.trim()) || PW;
+  if (!pw) { msg('Enter the password.', true); return; }
+  $('load').disabled = true; msg('Loading…');
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/admin_dump`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pw })
+    });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const data = await res.json();
+    if (!data || !data.ok) { msg('Incorrect password.', true); $('load').disabled = false; return; }
+    PW = pw;                                  // remember for Refresh
+    ROWS = data.rows || [];
+    $('gate').classList.add('hide');          // hide the password prompt once in
+    msg(`Loaded ${ROWS.length} response${ROWS.length===1?'':'s'} · ${new Date().toLocaleTimeString()}`);
+    render();
+    $('report').classList.remove('hide');
+  } catch (e) {
+    msg(`Load failed: ${e.message}.`, true);
+  } finally { $('load').disabled = false; }
+}
+
+const primaryOf = (row, qid) => row.answers && row.answers[qid] ? row.answers[qid].primary : null;
+const otherOf   = (row, qid) => row.answers && row.answers[qid] ? (row.answers[qid].other||'') : '';
+const fmtAddr = a => !a ? '' : [a.line1, a.line2, a.city, a.state, a.postal, a.country].filter(Boolean).join(', ');
+
+function render() {
+  const LIVE = ROWS.filter(r => !r.excluded);   // excluded rows drop out of every count, breakdown, and export
+  const total = LIVE.length;
+  const complete = LIVE.filter(r => r.status === 'complete').length;
+  const leads = LIVE.filter(r => r.email).length;
+  const gifts = LIVE.filter(r => r.gift_wanted).length;
+
+  $('cards').innerHTML = [
+    [total,'responses (incl. abandoned)'], [complete,'completed'], [leads,'leads captured'], [gifts,'gifts requested']
+  ].map(([n,l]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+
+  // funnel
+  const byStatus = s => LIVE.filter(r => r.status === s).length;
+  const fun = [['partial','Answered only'],['contact','+ Contact'],['complete','Completed']];
+  $('funnel').innerHTML = fun.map(([s,l]) => {
+    const n = byStatus(s), pct = total ? Math.round(n/total*100) : 0;
+    return `<div class="orow"><div class="oname">${l}</div><div class="otrack"><div class="ofill" style="width:${pct}%"></div></div><div class="oval">${n} · ${pct}%</div></div>`;
+  }).join('');
+
+  // per-question breakdown
+  $('questions').innerHTML = QUESTIONS.map(q => {
+    const counts = {}; q.options.forEach(o => counts[o] = 0);
+    let writeins = [];
+    LIVE.forEach(r => {
+      const p = primaryOf(r, q.id);
+      if (!p) return;
+      if (p === '__other') { const t = otherOf(r,q.id); if (t) writeins.push(t); }
+      else if (p in counts) counts[p]++;
+      else counts[p] = (counts[p]||0) + 1;
+    });
+    const sum = Object.values(counts).reduce((a,b)=>a+b,0);
+    const ranked = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    const rows = ranked.map(([o,n],i) => {
+      const pct = sum ? Math.round(n/sum*100) : 0;
+      return `<div class="orow ${i===0&&n>0?'top':''}"><div class="oname">${esc(o)}</div><div class="otrack"><div class="ofill" style="width:${pct}%"></div></div><div class="oval">${n} · ${pct}%</div></div>`;
+    }).join('');
+    const wi = writeins.length ? `<div class="writein"><b>Write-ins (${writeins.length}):</b> ${writeins.map(esc).join(' · ')}</div>` : '';
+    return `<div class="qblock"><div class="qtitle">${esc(q.prompt)}</div>${rows}${wi}</div>`;
+  }).join('');
+
+  // entries table — every response, including abandoned (answers-only) sessions.
+  // Excluded rows shown greyed with an Include toggle.
+  const entries = ROWS;
+  $('leads').innerHTML = entries.length ? `<table><thead><tr>
+    <th>When (Paris)</th><th>Name</th><th>Email</th><th>Company</th><th>Status</th><th>Gift</th><th style="text-align:right">Actions</th></tr></thead><tbody>
+    ${entries.map(r=>`<tr class="${r.excluded?'excluded':''}">
+      <td>${fmtParis(r.created_at)}</td>
+      <td>${esc([r.first_name,r.last_name].filter(Boolean).join(' '))||'<span class="muted">—</span>'}</td>
+      <td>${esc(r.email)||'<span class="muted">—</span>'}</td>
+      <td>${esc(r.company)||'—'}</td>
+      <td><span class="pill ${esc(r.status)}">${esc(r.status)}</span></td>
+      <td>${r.gift_wanted?esc(r.gift_item||'yes'):'—'}</td>
+      <td class="actions">
+        <button class="mini" onclick="openAnswers('${r.id}')">View</button>
+        ${r.excluded
+          ? `<button class="mini" onclick="setExcluded('${r.id}',false)">Include</button>`
+          : `<button class="mini" onclick="setExcluded('${r.id}',true)">Exclude</button>`}
+        <button class="mini danger" onclick="deleteRow('${r.id}')">Delete</button>
+      </td></tr>`).join('')}
+    </tbody></table>` : '<div class="empty">No entries yet.</div>';
+}
+
+// CSV
+function toCSV(rows, cols) {
+  const head = cols.map(c=>c[0]).join(',');
+  const body = rows.map(r => cols.map(c => {
+    const v = c[1](r); const s = v==null?'':String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  }).join(',')).join('\n');
+  return head + '\n' + body;
+}
+function download(name, csv) {
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+}
+function exportAll() {
+  const rows = ROWS.filter(r => !r.excluded);   // every entry incl. abandoned; excluded rows dropped
+  const cols = [
+    ['created_at_utc', r=>r.created_at],['created_at_paris', r=>fmtParis(r.created_at)],['status',r=>r.status],
+    ['first_name',r=>r.first_name],['last_name',r=>r.last_name],['email',r=>r.email],['phone',r=>r.phone],
+    ['company',r=>r.company],['job_title',r=>r.job_title],['country',r=>r.country],['industry',r=>r.industry],
+    ['marketing_consent',r=>r.marketing_consent],
+    ...QUESTIONS.map(q => [q.id, r => { const p=primaryOf(r,q.id); return p==='__other'?otherOf(r,q.id):p; }]),
+    ['gift_wanted',r=>r.gift_wanted],['gift_item',r=>r.gift_item],
+    ['ship_line1',r=>r.gift_address&&r.gift_address.line1],['ship_line2',r=>r.gift_address&&r.gift_address.line2],
+    ['ship_city',r=>r.gift_address&&r.gift_address.city],['ship_state',r=>r.gift_address&&r.gift_address.state],
+    ['ship_postal',r=>r.gift_address&&r.gift_address.postal],['ship_country',r=>r.gift_address&&r.gift_address.country]
+  ];
+  download('raise-leads-and-gifts.csv', toCSV(rows, cols));
+}
+
+// ── Row actions (password-gated RPCs; PW held in memory from unlock) ──────
+async function rpc(fn, body) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json();
+}
+async function setExcluded(id, val) {
+  try {
+    const d = await rpc('admin_set_excluded', { pw: PW, row_id: id, val });
+    if (!d || !d.ok) { msg('Action failed — session may have expired. Reload the page.', true); return; }
+    const row = ROWS.find(r => r.id === id); if (row) row.excluded = val;   // update in place, no full reload
+    render();
+  } catch (e) { msg(`Action failed: ${e.message}`, true); }
+}
+async function deleteRow(id) {
+  const row = ROWS.find(r => r.id === id);
+  const who = row ? ([row.first_name,row.last_name].filter(Boolean).join(' ') || row.email || 'this entry') : 'this entry';
+  if (!confirm(`Permanently delete ${who}? This can't be undone.`)) return;
+  try {
+    const d = await rpc('admin_delete', { pw: PW, row_id: id });
+    if (!d || !d.ok) { msg('Delete failed — session may have expired. Reload the page.', true); return; }
+    ROWS = ROWS.filter(r => r.id !== id);
+    render();
+  } catch (e) { msg(`Delete failed: ${e.message}`, true); }
+}
+
+// ── Answers modal ─────────────────────────────────────────────────────────
+function openAnswers(id) {
+  const r = ROWS.find(x => x.id === id); if (!r) return;
+  const qs = QUESTIONS.map(q => {
+    const p = primaryOf(r, q.id);
+    const ans = p === '__other' ? `${esc(otherOf(r,q.id))} <span class="tagx">write-in</span>` : (p ? esc(p) : '<span class="muted">— no answer —</span>');
+    const a = (r.answers && r.answers[q.id]) || {};
+    const tex = (a.texture && a.texture.length) ? `<div class="mline"><span class="mlbl">Texture</span> ${a.texture.map(esc).join(' · ')}</div>` : '';
+    const open = (a.open && a.open.trim()) ? `<div class="mline"><span class="mlbl">Open</span> ${esc(a.open)}</div>` : '';
+    return `<div class="mq"><div class="mqp">${esc(q.prompt)}</div><div class="mqa">${ans}</div>${tex}${open}</div>`;
+  }).join('');
+  const gift = r.gift_wanted
+    ? `<div class="mline"><span class="mlbl">Gift</span> ${esc(r.gift_item||'—')}</div><div class="mline"><span class="mlbl">Ship to</span> ${esc(fmtAddr(r.gift_address))||'—'}</div>`
+    : `<div class="mline"><span class="mlbl">Gift</span> none</div>`;
+  $('modal-body').innerHTML = `
+    <div class="mhead">
+      <div class="mname">${esc([r.first_name,r.last_name].filter(Boolean).join(' '))||'—'}</div>
+      <div class="mmeta">${esc(r.email)||'—'} · ${esc(r.company)||'—'}${r.job_title?' · '+esc(r.job_title):''}</div>
+      <div class="mmeta">${esc(r.country)||''}${r.industry?' · '+esc(r.industry):''} · consent: ${r.marketing_consent?'yes':'no'} · ${fmtParis(r.created_at)} Paris</div>
+    </div>
+    ${qs}
+    <div class="mgift">${gift}</div>`;
+  $('modal').classList.add('show');
+}
+function closeModal() { $('modal').classList.remove('show'); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+</body>
+</html>

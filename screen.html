@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peer Intelligence Exchange — Live Board · WEKA at RAISE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ════════════════════════════════════════════════════════════
+     Peer Intelligence Exchange — RAISE Paris 2026 · booth TV board
+     The 55" companion to the iPad kiosk. Same background system,
+     palette, and type so the two surfaces read as one experience.
+     Rotates through the four questions; bars are the live "read of
+     the room"; the leading answer fills WEKA purple.
+     DEMO_MODE = true → simulated live data (no Supabase needed).
+     ════════════════════════════════════════════════════════════ */
+  :root {
+    --accent: #7C03EC;
+    --accent-deep: #5E02B3;
+    --accent-wash: #F3EAFD;
+    --bg: #F2F2EB;
+    --bg-card: #FBFAF6;
+    --bg-elevated: #FFFFFF;
+    --border: #DEDCD3;
+    --border-strong: #C9C6BB;
+    --text: #1B1626;
+    --text-dim: #5A5466;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: var(--body); overflow: hidden;
+  }
+
+  /* ── BACKGROUND (five-layer system, shared with the kiosk) ── */
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 55% 60% at 16% -8%, rgba(124,3,236,0.11) 0%, transparent 66%),
+      radial-gradient(ellipse 50% 55% at 90% -4%, rgba(124,3,236,0.055) 0%, transparent 62%);
+    filter: blur(70px); pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: ''; position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(27,22,38,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(27,22,38,0.035) 1px, transparent 1px);
+    background-size: 44px 44px; pointer-events: none; z-index: 1;
+  }
+  .bg-cream {
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse 62% 46% at 50% -10%, rgba(255,255,255,0.65) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .bg-mask {
+    position: fixed; inset: 0;
+    background: radial-gradient(78% 78% at 50% 28%, transparent 52%, rgba(120,108,86,0.09) 100%);
+    pointer-events: none; z-index: 0;
+  }
+  .bg-grain {
+    position: fixed; inset: -10%; width: 120%; height: 120%;
+    opacity: 0.5; mix-blend-mode: multiply; pointer-events: none; z-index: 2;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 300px 300px;
+  }
+
+  /* ── LIVE / DEMO PILL ── */
+  .live-pill {
+    position: fixed; top: 3vh; right: 3.2vw; z-index: 4;
+    display: flex; align-items: center; gap: 0.6vw;
+    font-family: var(--mono); font-size: 0.95vw; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--text-dim); background: rgba(255,255,255,0.5); border: 1px solid var(--border);
+    padding: 0.7vh 1vw; border-radius: 999px; backdrop-filter: blur(6px);
+  }
+  .live-pill .dot { width: 0.7vw; height: 0.7vw; border-radius: 50%; background: var(--accent); animation: livePulse 1.8s ease-in-out infinite; }
+  @keyframes livePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  /* ── BOARD SHELL ── */
+  .board { position: relative; z-index: 3; height: 100vh; width: 100vw; display: flex; flex-direction: column; padding: 5vh 4vw 4.5vh; }
+
+  .board-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .b-eyebrow { font-family: var(--mono); font-size: 1.05vw; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); margin-bottom: 1vh; }
+  .b-title { font-family: var(--display); font-weight: 700; font-size: 2.5vw; line-height: 1; letter-spacing: -0.01em; color: var(--text); }
+  .b-title .tk { color: var(--accent); font-weight: 700; }
+  .b-title .conn { color: var(--text); font-weight: 300; }
+
+  /* ── STAGE / QUESTION PANEL ── */
+  .stage { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 4vh 0 3vh; }
+  .panel { flex: 1; display: flex; flex-direction: column; min-height: 0; animation: panelIn 0.55s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(1.6vh); } to { opacity: 1; transform: none; } }
+
+  .q-prompt { font-family: var(--display); font-weight: 600; font-size: 3.9vw; line-height: 1.02; letter-spacing: -0.015em; color: var(--text); max-width: 88%; margin-bottom: 1vh; }
+
+  .bars { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2.5vh; min-height: 0; }
+  .bar-row { display: flex; flex-direction: column; gap: 1vh; }
+  .bar-head { display: flex; justify-content: space-between; align-items: baseline; gap: 2vw; }
+  .bar-label { font-family: var(--body); font-weight: 400; font-size: 1.6vw; line-height: 1.1; color: var(--text-dim); }
+  .bar-row.lead .bar-label { color: var(--text); font-weight: 500; font-size: 1.85vw; }
+  .bar-pct { font-family: var(--mono); font-size: 1.7vw; color: var(--text-dim); }
+  .bar-row.lead .bar-pct { color: var(--accent); font-size: 2.5vw; }
+  .bar-track { height: 2.4vh; background: rgba(27,22,38,0.07); border-radius: 999px; overflow: hidden; }
+  .bar-row.lead .bar-track { height: 3.4vh; }
+  .bar-fill { height: 100%; width: 0; background: #C3A4E6; border-radius: 999px; transition: width 1.1s cubic-bezier(.22,.61,.36,1); transition-delay: var(--d, 0s); }
+  .bar-row.lead .bar-fill { background: linear-gradient(90deg, var(--accent-deep), var(--accent)); box-shadow: 0 0 28px rgba(124,3,236,0.28); position: relative; overflow: hidden; }
+  .bar-row.lead .bar-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.38) 50%, transparent 70%); transform: translateX(-110%); animation: sheen 3.2s ease-in-out infinite; animation-delay: 0.6s; }
+  @keyframes sheen { 0% { transform: translateX(-110%); } 55%, 100% { transform: translateX(220%); } }
+
+  /* ── FOOTER ── */
+  .board-foot { display: flex; justify-content: space-between; align-items: center; }
+  .cta { font-family: var(--mono); font-size: 0.95vw; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
+  .dots { display: flex; gap: 0.9vw; align-items: center; }
+  .dot-nav { width: 0.7vw; height: 0.7vw; border-radius: 50%; background: var(--border-strong); transition: all 0.4s ease; }
+  .dot-nav.on { background: var(--accent); width: 2.6vw; border-radius: 999px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-cream"></div>
+<div class="bg-mask"></div>
+<div class="bg-grain"></div>
+
+<div class="live-pill" id="live-pill"><span class="dot"></span><span id="live-text">LIVE</span></div>
+
+<div class="board">
+  <header class="board-head">
+    <div class="bh-left">
+      <div class="b-eyebrow">WEKA · RAISE Paris 2026</div>
+      <div class="b-title"><span class="conn">Peer</span> <span class="tk">Intelligence</span> <span class="conn">Exchange</span></div>
+    </div>
+  </header>
+
+  <main class="stage" id="stage"></main>
+
+  <footer class="board-foot">
+    <div class="cta">Add your read at the kiosk &rarr;</div>
+    <div class="dots" id="dots"></div>
+  </footer>
+</div>
+
+<script>
+/* ════════════ CONFIG ════════════ */
+const SUPABASE_URL = 'https://olbswfxmskkcshcirnxu.supabase.co';      // ⟶ project URL (same project as the kiosk)
+const SUPABASE_KEY = 'sb_publishable_4gC5Zv4znTXEYxFgmrcPnA_Ly_0pW58';      // ⟶ anon / publishable key
+const DEMO_MODE = !(SUPABASE_URL && SUPABASE_KEY);   // demo data until both values above are set
+const ROTATE_MS = 10000;      // how long each question holds on screen
+const POLL_MS   = 6000;       // how often the numbers refresh
+
+/* ════════════ QUESTIONS (ids + primary options match the kiosk verbatim) ════════════ */
+const QUESTIONS = [
+  { id: 'bottleneck', eyebrow: '01 · The bottleneck',
+    prompt: 'Where is the real constraint now?',
+    options: ['Compute / GPU availability','Memory and data movement','Power and energy','Capital efficiency and cost','Model quality and capability','Talent and operational know-how','Unsupported AI use cases'] },
+  { id: 'metric', eyebrow: '02 · The metric',
+    prompt: 'What decides competitive advantage in production AI?',
+    options: ['Cost per token / per inference','GPU utilisation','Time to first token / latency','Tokens per watt','Throughput at scale','Model accuracy and quality'] },
+  { id: 'dollar', eyebrow: '03 · The next dollar',
+    prompt: 'Where does the next investment go?',
+    options: ['More GPUs / more compute','Efficiency from existing infrastructure','Model-side optimisation','Managed / cloud inference services','Memory and caching architecture'] },
+  { id: 'sovereignty', eyebrow: '04 · The European lens',
+    prompt: 'For European AI, sovereignty is a…',
+    options: ['Competitive advantage','Constraint to design around','Compliance cost','Overstated — not a real factor'] }
+];
+
+/* ════════════ DEMO SEED (illustrative only — clearly flagged DEMO) ════════════ */
+const SEED = {
+  bottleneck: {'Memory and data movement':31,'Compute / GPU availability':22,'Power and energy':14,'Capital efficiency and cost':11,'Model quality and capability':7,'Talent and operational know-how':5},
+  metric: {'Cost per token / per inference':28,'Time to first token / latency':24,'GPU utilisation':16,'Throughput at scale':12,'Tokens per watt':6,'Model accuracy and quality':4},
+  dollar: {'Efficiency from existing infrastructure':30,'More GPUs / more compute':19,'Memory and caching architecture':18,'Model-side optimisation':11,'Managed / cloud inference services':7},
+  sovereignty: {'Competitive advantage':27,'Constraint to design around':21,'Compliance cost':19,'Overstated — not a real factor':8}
+};
+
+const state = { agg: {}, total: 0, idx: 0, displayCount: 0, rotateTimer: null };
+
+/* ════════════ DATA ════════════ */
+function blankAgg() {
+  const a = {};
+  QUESTIONS.forEach(q => { a[q.id] = {}; q.options.forEach(o => a[q.id][o] = 0); });
+  return a;
+}
+function qSum(q) { return q.options.reduce((s, o) => s + (state.agg[q.id][o] || 0), 0); }
+
+function seedDemo() {
+  state.agg = blankAgg();
+  QUESTIONS.forEach(q => q.options.forEach(o => { state.agg[q.id][o] = (SEED[q.id] && SEED[q.id][o]) || 0; }));
+  state.total = 90;
+}
+function weightedPick(opts, weights) {
+  const total = weights.reduce((s, w) => s + w, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < opts.length; i++) { r -= weights[i]; if (r <= 0) return opts[i]; }
+  return opts[opts.length - 1];
+}
+function simulateTick() {
+  const inc = 1 + Math.floor(Math.random() * 3);
+  for (let r = 0; r < inc; r++) {
+    QUESTIONS.forEach(q => {
+      const weights = q.options.map(o => (state.agg[q.id][o] || 0) + 1);  // leaders stay ahead, tail still grows
+      const pick = weightedPick(q.options, weights);
+      state.agg[q.id][pick]++;
+    });
+    state.total++;
+  }
+}
+
+async function fetchAggregate() {
+  if (DEMO_MODE) { simulateTick(); return; }
+  // Reads the room_read aggregate view only — never the base table, so no PII reaches the wall.
+  // View definition + grants are in supabase-setup.sql.
+  try {
+    const h = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+    const rows = await (await fetch(`${SUPABASE_URL}/rest/v1/room_read?select=question_id,option,votes`, { headers: h })).json();
+    const agg = blankAgg();
+    rows.forEach(r => { if (agg[r.question_id] && r.option in agg[r.question_id]) agg[r.question_id][r.option] = r.votes; });
+    state.agg = agg;
+    state.total = QUESTIONS.reduce((m, q) => Math.max(m, qSum(q)), 0);
+  } catch (e) { console.error('aggregate fetch failed', e); }
+}
+
+/* ════════════ RENDER ════════════ */
+const stage = document.getElementById('stage');
+
+function esc(s) { return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;'); }
+
+function renderPanel() {
+  const q = QUESTIONS[state.idx];
+  const sum = qSum(q);
+  const ranked = [...q.options].sort((a, b) => (state.agg[q.id][b] || 0) - (state.agg[q.id][a] || 0)).slice(0, 5);
+  stage.innerHTML =
+    `<div class="panel">
+       <div class="q-prompt">${q.prompt}</div>
+       <div class="bars">${ranked.map((o, i) => {
+         const v = state.agg[q.id][o] || 0;
+         const pct = sum ? Math.round(v / sum * 100) : 0;
+         return `<div class="bar-row${i === 0 && sum ? ' lead' : ''}" data-opt="${esc(o)}" style="--d:${(i * 0.12).toFixed(2)}s">
+                   <div class="bar-head"><div class="bar-label">${o}</div><div class="bar-pct">0%</div></div>
+                   <div class="bar-track"><div class="bar-fill"></div></div>
+                 </div>`;
+       }).join('')}</div>
+     </div>`;
+  requestAnimationFrame(() => {
+    stage.querySelectorAll('.bar-row').forEach((row, i) => {
+      const v = state.agg[q.id][row.dataset.opt] || 0;
+      const pct = sum ? Math.round(v / sum * 100) : 0;
+      row.querySelector('.bar-fill').style.width = pct + '%';
+      animateNum(row.querySelector('.bar-pct'), pct, 1000 + i * 120);
+    });
+  });
+  updateDots();
+}
+
+function animateNum(el, to, dur) {
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / dur);
+    el.textContent = Math.round(to * (1 - Math.pow(1 - t, 3))) + '%';
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function refreshCurrent() {
+  const q = QUESTIONS[state.idx];
+  const sum = qSum(q);
+  stage.querySelectorAll('.bar-row').forEach(row => {
+    const v = state.agg[q.id][row.dataset.opt] || 0;
+    const pct = sum ? Math.round(v / sum * 100) : 0;
+    row.querySelector('.bar-fill').style.width = pct + '%';
+    row.querySelector('.bar-pct').textContent = pct + '%';
+  });
+}
+
+function buildDots() {
+  document.getElementById('dots').innerHTML = QUESTIONS.map((_, i) => `<div class="dot-nav" data-i="${i}"></div>`).join('');
+}
+function updateDots() {
+  document.querySelectorAll('.dot-nav').forEach((d, i) => d.classList.toggle('on', i === state.idx));
+}
+
+function rotate() {
+  state.idx = (state.idx + 1) % QUESTIONS.length;
+  renderPanel();
+}
+
+/* ════════════ INIT ════════════ */
+async function init() {
+  document.getElementById('live-text').textContent = DEMO_MODE ? 'DEMO DATA' : 'LIVE';
+  if (DEMO_MODE) seedDemo(); else await fetchAggregate();
+  buildDots();
+  renderPanel();
+  setInterval(rotate, ROTATE_MS);
+  setInterval(async () => { await fetchAggregate(); refreshCurrent(); }, POLL_MS);
+}
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
