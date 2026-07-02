@@ -764,15 +764,62 @@ async function finalize(btnId) {
 // ════════════════════════════════════════════════
 // THANK YOU
 // ════════════════════════════════════════════════
-function renderThanks() {
+// Renders one room-read row given the leading option label + percentage.
+function roomRowHTML(q, leadLabel, pct) {
+  return `<div class="room-row"><div class="rq">${q.eyebrow.split('· ')[1] || q.eyebrow}</div><div class="ra"><span class="lead">${leadLabel}</span><span class="pct">${pct}%</span></div><div class="room-bar"><i data-w="${pct}"></i></div></div>`;
+}
+
+// Paints the room-rows container from a per-question {label, pct} map.
+function paintRoomRows(rowMap) {
+  document.getElementById('room-rows').innerHTML = QUESTIONS.map(q => {
+    const r = rowMap[q.id];
+    return roomRowHTML(q, r.label, r.pct);
+  }).join('');
+  requestAnimationFrame(() => document.querySelectorAll('#room-rows .room-bar i').forEach(el => el.style.width = el.dataset.w + '%'));
+}
+
+// MOCK fallback → {label, pct} per question. Used only if the live read fails or is empty.
+function mockRowMap() {
+  const m = {};
+  QUESTIONS.forEach(q => {
+    const pcts = MOCK[q.id], top = pcts.indexOf(Math.max(...pcts));
+    m[q.id] = { label: q.options[top], pct: pcts[top] };
+  });
+  return m;
+}
+
+// Live read → leading option + percentage per question from the room_read aggregate view.
+async function liveRoomMap() {
+  const h = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` };
+  const rows = await (await fetch(`${SUPABASE_URL}/rest/v1/room_read?select=question_id,option,votes`, { headers: h })).json();
+  if (!Array.isArray(rows) || !rows.length) return null;   // nothing real yet → caller falls back
+  const byQ = {};
+  rows.forEach(r => {
+    (byQ[r.question_id] = byQ[r.question_id] || []).push({ option: r.option, votes: Number(r.votes) || 0 });
+  });
+  const m = {};
+  QUESTIONS.forEach(q => {
+    const opts = byQ[q.id];
+    if (!opts || !opts.length) { m[q.id] = { label: q.options[0], pct: 0 }; return; }
+    const total = opts.reduce((s, o) => s + o.votes, 0) || 1;
+    const lead = opts.reduce((a, b) => b.votes > a.votes ? b : a);
+    m[q.id] = { label: lead.option, pct: Math.round(lead.votes / total * 100) };
+  });
+  return m;
+}
+
+async function renderThanks() {
   document.getElementById('thanks-tail').textContent = state.gift.wants
     ? 'your Peer Intelligence Report follows by email after RAISE, and your gift is on its way.'
     : 'your Peer Intelligence Report follows by email after RAISE.';
-  document.getElementById('room-rows').innerHTML = QUESTIONS.map(q => {
-    const pcts = MOCK[q.id], top = pcts.indexOf(Math.max(...pcts));
-    return `<div class="room-row"><div class="rq">${q.eyebrow.split('· ')[1] || q.eyebrow}</div><div class="ra"><span class="lead">${q.options[top]}</span><span class="pct">${pcts[top]}%</span></div><div class="room-bar"><i data-w="${pcts[top]}"></i></div></div>`;
-  }).join('');
-  requestAnimationFrame(() => document.querySelectorAll('#room-rows .room-bar i').forEach(el => el.style.width = el.dataset.w + '%'));
+  // Paint MOCK immediately so the screen is never blank, then swap to live data when it arrives.
+  paintRoomRows(mockRowMap());
+  if (!TEST_MODE) {
+    try {
+      const live = await liveRoomMap();
+      if (live) paintRoomRows(live);
+    } catch (e) { console.error('room read failed, showing fallback', e); }
+  }
   const ring = document.getElementById('reset-ring-fill');
   ring.style.transition = 'none'; ring.style.strokeDashoffset = '0';
   requestAnimationFrame(() => { ring.style.transition = 'stroke-dashoffset 30s linear'; ring.style.strokeDashoffset = '175.9'; });
