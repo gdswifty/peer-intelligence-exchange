@@ -7,7 +7,6 @@ post-event Peer Intelligence Report emailed to participants (which doubles as le
 Aggregate responses are anonymous. Contact details are captured separately and are never
 readable by the public anon key — only through the password-gated admin panel.
 
-
 ## Pages
 
 | File | Role | URL |
