@@ -24,6 +24,7 @@
     --accent: #7C03EC;
     --accent-deep: #5E02B3;
     --accent-wash: #F3EAFD;
+    --danger: #D64545;
     --bg: #F2F2EB;
     --bg-card: #FBFAF6;
     --bg-elevated: #FFFFFF;
@@ -192,6 +193,24 @@
   .field input { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; font-family: var(--body); font-size: var(--fs-input); color: var(--text); outline: none; transition: border-color 0.2s; width: 100%; -webkit-appearance: none; }
   .field input:focus { border-color: var(--accent); }
   .field input::placeholder { color: var(--text-dim); }
+
+  /* ── VALIDATION ERROR STATES ── */
+  .field input.input-error,
+  #other-input.input-error { border-color: #D64545 !important; box-shadow: 0 0 0 3px rgba(214,69,69,0.14); animation: shake 0.3s ease; }
+  .combobox input.input-error { border-color: #D64545 !important; box-shadow: 0 0 0 3px rgba(214,69,69,0.14); }
+  .gift-cards.input-error { outline: 2px solid #D64545; outline-offset: 4px; border-radius: 10px; animation: shake 0.3s ease; }
+  .consent-row.input-error { outline: 2px solid #D64545; outline-offset: 6px; border-radius: 6px; }
+  .consent-row.input-error input[type=checkbox] { outline: 2px solid #D64545; outline-offset: 2px; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
+
+  /* ── REQUIRED "SOMETHING ELSE" FIELD (revealed after tapping the option) ── */
+  .opt-other-required { margin-top: 12px; animation: fade 0.25s ease; }
+  .opt-other-required label { display: block; font-family: var(--mono); font-size: var(--fs-label); letter-spacing: 3px; color: var(--accent); text-transform: uppercase; margin-bottom: 8px; }
+  .opt-other-required .req-tag { color: var(--danger); }
+  .opt-other-required input { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; font-family: var(--body); font-size: var(--fs-input); color: var(--text); outline: none; transition: border-color 0.2s; -webkit-appearance: none; }
+  .opt-other-required input:focus { border-color: var(--accent); }
+  .opt-other-required input::placeholder { color: var(--text-dim); }
+  .opt-other-required input.input-error { border-color: #D64545 !important; box-shadow: 0 0 0 3px rgba(214,69,69,0.14); animation: shake 0.3s ease; }
 
   /* ── COUNTRY COMBOBOX (light) ── */
   .combobox { position: relative; width: 100%; }
@@ -404,7 +423,7 @@
       </div>
     </div>
     <div class="consent-text" style="padding-top:6px">Please provide your preferred delivery address. *This will only be used for this direct gift in relation to RAISE and no further unsolicited direct mailers.</div>
-    <label class="consent-row" style="margin-top:10px">
+    <label class="consent-row" id="gift-consent-row" style="margin-top:10px">
       <input type="checkbox" id="inp-gift-consent">
       <span class="consent-text">To receive my gift, I agree to WEKA using my details to ship it and to contact me for marketing purposes, in line with WEKA's <a href="https://www.weka.io/company/privacy-policy/" target="_blank" rel="noopener">Privacy Policy</a>. Required to receive a gift.</span>
     </label>
@@ -537,15 +556,22 @@ function renderQuestion(i) {
   document.getElementById('q-eyebrow').textContent = q.eyebrow;
   document.getElementById('q-text').textContent = q.prompt;
   document.getElementById('q-sub').textContent = q.sub;
-  const collapsed = a.primary && a.primary !== '__other' && !a.editing;
+  const collapsed = a.primary && !a.editing;
+  const collapsedLabel = a.primary === '__other' ? 'Something else' : a.primary;
   document.getElementById('opts').innerHTML = collapsed
     ? `<div class="opt-collapsed">
          <button class="opt-change" onclick="changeSelection()" aria-label="Change answer">←</button>
-         <span class="lbl">${a.primary}</span>
+         <span class="lbl">${collapsedLabel}</span>
          <span class="change-tag" onclick="changeSelection()">Change</span>
        </div>`
+      + (a.primary === '__other'
+        ? `<div class="opt-other-required">
+             <label for="other-input">Tell us in your words <span class="req-tag">· required</span></label>
+             <input type="text" id="other-input" placeholder="Your answer" value="${a.other.replace(/"/g,'&quot;')}" oninput="setOther(this.value)" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false">
+           </div>`
+        : '')
     : q.options.map((o, idx) => `<button class="opt ${a.primary === o ? 'sel' : ''}" onclick="pick(${idx})"><span class="tick"></span><span class="lbl">${o}</span></button>`).join('') +
-      `<div class="opt-other"><input type="text" id="other-input" placeholder="Something else…" value="${a.other.replace(/"/g,'&quot;')}" oninput="setOther(this.value)"></div>`;
+      `<button class="opt ${a.primary === '__other' ? 'sel' : ''}" onclick="pickOther()"><span class="tick"></span><span class="lbl">Something else</span></button>`;
   document.getElementById('texture-head').innerHTML = `<b>Optional — add some texture.</b> ${q.textureHead} Check as many as fit.`;
   document.getElementById('chips').innerHTML = q.texture.map((t, idx) => `<button class="chip ${a.texture.includes(t) ? 'sel' : ''}" onclick="toggleTex(${idx}, this)">${t}</button>`).join('');
   document.getElementById('open-label').textContent = q.open;
@@ -555,8 +581,9 @@ function renderQuestion(i) {
   document.getElementById('q-next').textContent = i === QUESTIONS.length - 1 ? 'Almost done →' : 'Continue →';
 }
 function pick(idx) { const q = QUESTIONS[state.qIndex], a = state.answers[q.id]; a.primary = q.options[idx]; a.other = ''; a.editing = false; renderQuestion(state.qIndex); }
+function pickOther() { const a = state.answers[QUESTIONS[state.qIndex].id]; a.primary = '__other'; a.editing = false; renderQuestion(state.qIndex); const el = document.getElementById('other-input'); if (el) el.focus(); }
 function changeSelection() { state.answers[QUESTIONS[state.qIndex].id].editing = true; renderQuestion(state.qIndex); }
-function setOther(v) { const a = state.answers[QUESTIONS[state.qIndex].id]; a.other = v; if (v.trim()) { a.primary = '__other'; document.querySelectorAll('#opts .opt').forEach(o => o.classList.remove('sel')); document.getElementById('texture').classList.add('open'); } }
+function setOther(v) { const a = state.answers[QUESTIONS[state.qIndex].id]; a.other = v; const el = document.getElementById('other-input'); if (el && v.trim()) el.classList.remove('input-error'); }
 function toggleTex(idx, el) { const arr = state.answers[QUESTIONS[state.qIndex].id].texture, t = QUESTIONS[state.qIndex].texture[idx]; const at = arr.indexOf(t); if (at > -1) arr.splice(at, 1); else arr.push(t); if (el) el.classList.toggle('sel'); else renderQuestion(state.qIndex); }
 function goToQuestion(i) {
   const card = document.querySelector('#screen-question .narrow');
@@ -573,7 +600,13 @@ function goToQuestion(i) {
 const answered = a => !!a.primary && (a.primary !== '__other' || (a.other || '').trim());
 function nextQuestion() {
   const a = state.answers[QUESTIONS[state.qIndex].id];
-  if (!answered(a)) { showToast('Pick an answer to continue'); return; }
+  if (!a.primary) { showToast('Pick an answer to continue'); return; }
+  if (a.primary === '__other' && !(a.other || '').trim()) {
+    const el = document.getElementById('other-input');
+    if (el) { el.classList.add('input-error'); el.focus(); }
+    showToast('Add your answer to continue');
+    return;
+  }
   if (state.qIndex < QUESTIONS.length - 1) goToQuestion(state.qIndex + 1); else { saveAnswers(); showScreen('details'); }
 }
 function prevQuestion() { if (state.qIndex > 0) goToQuestion(state.qIndex - 1); }
@@ -634,6 +667,22 @@ function initCountryCombobox(inputId, dropdownId) {
 // ════════════════════════════════════════════════
 // SUBMIT
 // ════════════════════════════════════════════════
+// ════════════════════════════════════════════════
+// FIELD VALIDATION HIGHLIGHTING
+// ════════════════════════════════════════════════
+// Flags a field red, scrolls it into view, focuses it, and clears the flag on next input.
+function flagField(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('input-error');
+  const clear = () => { el.classList.remove('input-error'); el.removeEventListener('input', clear); el.removeEventListener('change', clear); };
+  el.addEventListener('input', clear); el.addEventListener('change', clear);
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  try { el.focus({ preventScroll: true }); } catch (e) { el.focus(); }
+  return el;
+}
+function clearFieldErrors(ids) { ids.forEach(id => { const el = document.getElementById(id); if (el) el.classList.remove('input-error'); }); }
+
 async function goToGift() {
   const first = document.getElementById('inp-first').value.trim();
   const last = document.getElementById('inp-last').value.trim();
@@ -645,11 +694,16 @@ async function goToGift() {
   const consent = document.getElementById('inp-consent').checked;
   let phoneN = phone, countryN = country;
 
+  clearFieldErrors(['inp-first','inp-last','inp-email','inp-phone','inp-company','inp-title','inp-country']);
+
   if (!TEST_MODE) {
-    if (!first || !last || !company || !title) { showToast('Please fill in all fields'); return; }
-    const e = validateWorkEmail(email); if (!e.ok) { showToast(e.msg); return; }
-    const p = validatePhone(phone); if (!p.ok) { showToast(p.msg); return; } phoneN = p.normalized;
-    const c = validateCountry(country); if (!c.ok) { showToast(c.msg); return; } countryN = c.normalized;
+    // Required text fields — flag the first empty one.
+    const required = [['inp-first',first],['inp-last',last],['inp-company',company],['inp-title',title]];
+    const missing = required.find(([id, val]) => !val);
+    if (missing) { flagField(missing[0]); showToast('Please fill in all required fields'); return; }
+    const e = validateWorkEmail(email); if (!e.ok) { flagField('inp-email'); showToast(e.msg); return; }
+    const p = validatePhone(phone); if (!p.ok) { flagField('inp-phone'); showToast(p.msg); return; } phoneN = p.normalized;
+    const c = validateCountry(country); if (!c.ok) { flagField('inp-country'); showToast(c.msg); return; } countryN = c.normalized;
   } else {
     const cn = normalizeCountry(country); if (cn) countryN = cn;
   }
@@ -688,7 +742,6 @@ function chooseGift(wants) {
 }
 function confirmGift() {
   const giftConsent = document.getElementById('inp-gift-consent').checked;
-  if (!giftConsent) { showToast('Tick the box to receive your gift'); return; }
   const a1 = document.getElementById('inp-addr1').value.trim();
   const a2 = document.getElementById('inp-addr2').value.trim();
   const city = document.getElementById('inp-city').value.trim();
@@ -696,12 +749,28 @@ function confirmGift() {
   const postal = document.getElementById('inp-postal').value.trim();
   const country = document.getElementById('inp-gift-country').value.trim();
   let countryN = country;
+
+  clearFieldErrors(['inp-addr1','inp-city','inp-postal','inp-gift-country']);
+  document.getElementById('gift-consent-row').classList.remove('input-error');
+  document.getElementById('gift-opts').classList.remove('input-error');
+
   if (!TEST_MODE) {
-    if (!state.gift.item) { showToast('Pick a gift to continue'); return; }
-    if (!a1) { showToast('Add address line 1'); return; }
-    if (!city) { showToast('Add a city'); return; }
-    if (!postal) { showToast('Add a postal code'); return; }
-    const c = validateCountry(country); if (!c.ok) { showToast(c.msg); return; } countryN = c.normalized;
+    if (!state.gift.item) {
+      const opts = document.getElementById('gift-opts');
+      opts.classList.add('input-error'); opts.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      showToast('Pick a gift to continue'); return;
+    }
+    if (!a1) { flagField('inp-addr1'); showToast('Add address line 1'); return; }
+    if (!city) { flagField('inp-city'); showToast('Add a city'); return; }
+    if (!postal) { flagField('inp-postal'); showToast('Add a postal code'); return; }
+    const c = validateCountry(country); if (!c.ok) { flagField('inp-gift-country'); showToast(c.msg); return; } countryN = c.normalized;
+    if (!giftConsent) {
+      const row = document.getElementById('gift-consent-row');
+      row.classList.add('input-error'); row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      const clr = () => { row.classList.remove('input-error'); document.getElementById('inp-gift-consent').removeEventListener('change', clr); };
+      document.getElementById('inp-gift-consent').addEventListener('change', clr);
+      showToast('Tick the box to receive your gift'); return;
+    }
   } else {
     const cn = normalizeCountry(country); if (cn) countryN = cn;
   }
