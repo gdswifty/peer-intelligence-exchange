@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Peer Intelligence">
 <meta name="theme-color" content="#F2F2EB">
 <title>Peer Intelligence Exchange — WEKA at RAISE</title>
@@ -50,7 +50,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
   html, body {
-    width: 100%; height: 100%;
+    width: 100%; height: 100vh; height: 100dvh;
     background: var(--bg); color: var(--text);
     font-family: var(--body); overflow: hidden; touch-action: manipulation;
   }
@@ -70,6 +70,12 @@
       linear-gradient(90deg, rgba(27,22,38,0.035) 1px, transparent 1px);
     background-size: 44px 44px; pointer-events: none; z-index: 1;
   }
+  .bg-base {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 100vh; height: 100dvh;
+    min-height: -webkit-fill-available;
+    background: var(--bg); pointer-events: none; z-index: -1;
+  }
   .bg-cream {
     position: fixed; inset: 0;
     background: radial-gradient(ellipse 62% 46% at 50% -10%, rgba(255,255,255,0.65) 0%, transparent 70%);
@@ -77,7 +83,9 @@
   }
   .bg-mask {
     position: fixed; inset: 0;
-    background: radial-gradient(78% 78% at 50% 28%, transparent 52%, rgba(120,108,86,0.09) 100%);
+    background:
+      radial-gradient(78% 78% at 50% 28%, transparent 52%, rgba(120,108,86,0.09) 100%),
+      linear-gradient(to bottom, transparent 82%, rgba(120,108,86,0.06) 100%);
     pointer-events: none; z-index: 0;
   }
   .bg-grain {
@@ -290,6 +298,7 @@
 </style>
 </head>
 <body>
+<div class="bg-base"></div>
 <div class="bg-cream"></div>
 <div class="bg-mask"></div>
 <div class="bg-grain"></div>
